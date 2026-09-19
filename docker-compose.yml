@@ -23,7 +23,7 @@ services:
       - NODE_ENV=production
       - TZ=America/Sao_Paulo
     networks:
-      - proxy                              # ← REDE do seu Traefik (ex: "proxy", "web", "traefik-public")
+      - network_public                     # ← REDE do seu Traefik (network_public)
     # ── OPÇÃO B · EXPORTA PORTA DIRETO (3000→3000) ─────────────────────
     # ports:
     #   - "3000:3000"
@@ -43,7 +43,7 @@ services:
       - "traefik.http.routers.kameetech.tls.certresolver=letsencrypt" # ← nome do seu certresolver
       - "traefik.http.routers.kameetech.service=kameetech-svc"
       - "traefik.http.services.kameetech-svc.loadbalancer.server.port=3000"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=network_public"
       # Middleware: redireciona www → non-www (opcional)
       - "traefik.http.middlewares.kameetech-nonwww.redirectregex.regex=^https?://www\\.(.*)"
       - "traefik.http.middlewares.kameetech-nonwww.redirectregex.replacement=https://$${1}"
@@ -53,5 +53,5 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 networks:
-  proxy:
+  network_public:
     external: true   # ← marque FALSE se quiser criar a rede aqui. Recomendado external=true já que Traefik roda nela.
