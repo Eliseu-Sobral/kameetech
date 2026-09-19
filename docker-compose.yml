@@ -1,0 +1,57 @@
+services:
+  # =====================================================================
+  #  KameeTech Landing · Next 16 Standalone (Portainer Stack)
+  #  2 formas de usar (ESCOLHA UMA):
+  #    A) Você já usa TRAEFIK como proxy reverso na VPS → labels abaixo já estão prontas
+  #       (trocar kameetech.com.br pelo seu domínio e acertar a entrypoint/LE)
+  #    B) Só quer expor a porta direto (ex: 3000) → comenta/remove os labels e
+  #       descomenta o bloco ports: abaixo
+  # =====================================================================
+  kameetech:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kameetech-landing:latest
+    container_name: kameetech-landing
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Sao_Paulo
+    networks:
+      - proxy                              # ← REDE do seu Traefik (ex: "proxy", "web", "traefik-public")
+    # ── OPÇÃO B · EXPORTA PORTA DIRETO (3000→3000) ─────────────────────
+    # ports:
+    #   - "3000:3000"
+    # ── HEALTHCHECK (verde/amarelo no Portainer) ───────────────────────
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # ── OPÇÃO A · LABELS TRAEFIK (RECOMENDADO com domínio + SSL) ────────
+    labels:
+      - "traefik.enable=true"
+      # HTTP (entrypoint web → redireciona p/ HTTPS automático se existir middleware)
+      - "traefik.http.routers.kameetech.rule=Host(`kameetech.com.br`) || Host(`www.kameetech.com.br`)"
+      - "traefik.http.routers.kameetech.entrypoints=websecure"     # ← trocar se sua entrypoint for "https"
+      - "traefik.http.routers.kameetech.tls.certresolver=letsencrypt" # ← nome do seu certresolver
+      - "traefik.http.routers.kameetech.service=kameetech-svc"
+      - "traefik.http.services.kameetech-svc.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+      # Middleware: redireciona www → non-www (opcional)
+      - "traefik.http.middlewares.kameetech-nonwww.redirectregex.regex=^https?://www\\.(.*)"
+      - "traefik.http.middlewares.kameetech-nonwww.redirectregex.replacement=https://$${1}"
+      - "traefik.http.middlewares.kameetech-nonwww.redirectregex.permanent=true"
+      - "traefik.http.routers.kameetech.middlewares=kameetech-nonwww@docker"
+      # Watchtower (se tiver rodando) = atualiza auto quando pushar nova tag
+      - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  proxy:
+    external: true   # ← marque FALSE se quiser criar a rede aqui. Recomendado external=true já que Traefik roda nela.
