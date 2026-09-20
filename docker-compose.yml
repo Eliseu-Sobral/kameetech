@@ -1,12 +1,91 @@
 services:
-  # =====================================================================
-  #  KameeTech Landing · Next 16 Standalone (Portainer Stack)
-  #  2 formas de usar (ESCOLHA UMA):
-  #    A) Você já usa TRAEFIK como proxy reverso na VPS → labels abaixo já estão prontas
-  #       (trocar kameetech.com.br pelo seu domínio e acertar a entrypoint/LE)
-  #    B) Só quer expor a porta direto (ex: 3000) → comenta/remove os labels e
-  #       descomenta o bloco ports: abaixo
-  # =====================================================================
+  # =============================================================================
+  #  1) TRAEFIK v3 — Proxy Reverso + Let's Encrypt AUTOMÁTICO
+  #     (1 vez só nesta VPS, se já tiver rodando APAGUE este service INTEIRO)
+  # =============================================================================
+  traefik:
+    image: traefik:v3.2
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"      # HTTP  (redireciona tudo → 443 automático)
+      - "443:443"    # HTTPS (Let's Encrypt SSL/TLS)
+    environment:
+      - TZ=America/Sao_Paulo
+      # Descomente abaixo se for usar wildcard SSL via Cloudflare DNS-01:
+      # - CF_API_EMAIL=${TRAEFIK_ACME_EMAIL}
+      # - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    volumes:
+      # Docker socket ← Traefik descobre containers novos automaticamente
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Persistência certificados Let's Encrypt ⬇︎ OBRIGATÓRIO chmod 600
+      - /opt/traefik/data/acme/acme.json:/acme.json
+      # Logs de acesso (opcional)
+      - /opt/traefik/data/logs:/var/log/traefik
+    networks:
+      - network_public
+    command:
+      - "--global.checknewversion=false"
+      - "--global.sendanonymoususage=false"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+
+      # Providers (Docker auto-discovery + network padrão)
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=network_public"
+
+      # Entrypoints + redirecionamento HTTP → HTTPS GLOBAL
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.asdefault=true"
+      - "--entrypoints.websecure.http.middlewares=hsts-headers@docker"
+
+      # ⬇︎⬇︎⬇︎ LET'S ENCRYPT ← CONFIG DO CERTIFICADO ESTAVA AQUI ⬇︎⬇︎⬇︎
+      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
+
+      # Dashboard Traefik + Ping health
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--ping=true"
+
+    labels:
+      - "traefik.enable=true"
+
+      # ROTA DO DASHBOARD TRAEFIK (htpasswd protegido)
+      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DASHBOARD}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=leresolver"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth,hsts-headers"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_USER}:${TRAEFIK_PASS_HASH}"
+      - "traefik.http.middlewares.traefik-auth.basicauth.removeheader=true"
+
+      # HSTS + security headers GLOBAL (usado por todos os apps)
+      - "traefik.http.middlewares.hsts-headers.headers.stsSeconds=63072000"
+      - "traefik.http.middlewares.hsts-headers.headers.stsIncludesubdomains=true"
+      - "traefik.http.middlewares.hsts-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.hsts-headers.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.hsts-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.hsts-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.hsts-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.hsts-headers.headers.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.middlewares.hsts-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+
+      - "traefik.docker.network=network_public"
+
+  # =============================================================================
+  #  2) KAMEETECH LANDING — Next 16 Standalone (Portainer-ready)
+  # =============================================================================
   kameetech:
     build:
       context: .
@@ -16,6 +95,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      - traefik
     read_only: false
     tmpfs:
       - /tmp
@@ -23,35 +104,45 @@ services:
       - NODE_ENV=production
       - TZ=America/Sao_Paulo
     networks:
-      - network_public                     # ← REDE do seu Traefik (network_public)
-    # ── OPÇÃO B · EXPORTA PORTA DIRETO (3000→3000) ─────────────────────
+      - network_public
+    # ── OPÇÃO B: Expõe porta DIRETO (se não quiser Traefik) ──────────────
     # ports:
     #   - "3000:3000"
-    # ── HEALTHCHECK (verde/amarelo no Portainer) ───────────────────────
+    # ── HEALTHCHECK Portainer (verde / amarelo) ─────────────────────────
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
-    # ── OPÇÃO A · LABELS TRAEFIK (RECOMENDADO com domínio + SSL) ────────
+    # ── LABELS TRAEFIK · HTTPS + domínio automático ─────────────────────
     labels:
       - "traefik.enable=true"
-      # HTTP (entrypoint web → redireciona p/ HTTPS automático se existir middleware)
+      # HTTPS (Troque kameetech.com.br ← SEU DOMÍNIO ABAIXO ↓↓↓)
       - "traefik.http.routers.kameetech.rule=Host(`kameetech.com.br`) || Host(`www.kameetech.com.br`)"
-      - "traefik.http.routers.kameetech.entrypoints=websecure"     # ← trocar se sua entrypoint for "https"
-      - "traefik.http.routers.kameetech.tls.certresolver=letsencrypt" # ← nome do seu certresolver
+      - "traefik.http.routers.kameetech.entrypoints=websecure"
+      # ★ REFERÊNCIA AO CERTIFICADO — aponta para o certresolver DEFINIDO LÁ NO TRAEFIK ACIMA
+      - "traefik.http.routers.kameetech.tls.certresolver=letsencrypt"
       - "traefik.http.routers.kameetech.service=kameetech-svc"
       - "traefik.http.services.kameetech-svc.loadbalancer.server.port=3000"
       - "traefik.docker.network=network_public"
-      # Middleware: redireciona www → non-www (opcional)
+      # Middleware www → non-www (opcional)
       - "traefik.http.middlewares.kameetech-nonwww.redirectregex.regex=^https?://www\\.(.*)"
       - "traefik.http.middlewares.kameetech-nonwww.redirectregex.replacement=https://$${1}"
       - "traefik.http.middlewares.kameetech-nonwww.redirectregex.permanent=true"
-      - "traefik.http.routers.kameetech.middlewares=kameetech-nonwww@docker"
-      # Watchtower (se tiver rodando) = atualiza auto quando pushar nova tag
+      - "traefik.http.routers.kameetech.middlewares=kameetech-nonwww@docker,hsts-headers@docker"
+      # Watchtower (se tiver rodando) — auto-atualiza com nova tag
       - "com.centurylinklabs.watchtower.enable=true"
 
+# =============================================================================
+#  REDE ÚNICA (criada automaticamente se não existir)
+# =============================================================================
 networks:
   network_public:
-    external: true   # ← marque FALSE se quiser criar a rede aqui. Recomendado external=true já que Traefik roda nela.
+    name: network_public
+    # external: false → Traefik + Kameetech + outros apps todos aqui
+    external: false
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
