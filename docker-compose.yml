@@ -122,7 +122,7 @@ services:
       - "traefik.http.routers.kameetech.rule=Host(`kameetech.com.br`) || Host(`www.kameetech.com.br`)"
       - "traefik.http.routers.kameetech.entrypoints=websecure"
       # ★ REFERÊNCIA AO CERTIFICADO — aponta para o certresolver DEFINIDO LÁ NO TRAEFIK ACIMA
-      - "traefik.http.routers.kameetech.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kameetech.tls.certresolver=leresolver"
       - "traefik.http.routers.kameetech.service=kameetech-svc"
       - "traefik.http.services.kameetech-svc.loadbalancer.server.port=3000"
       - "traefik.docker.network=network_public"
@@ -135,14 +135,10 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 # =============================================================================
-#  REDE ÚNICA (criada automaticamente se não existir)
+#  REDE ÚNICA · EXISTENTE (criada manualmente na VPS)
+#  Erro Portainer "has incorrect label com.docker.compose.network → SEMPRE external=true
 # =============================================================================
 networks:
   network_public:
     name: network_public
-    # external: false → Traefik + Kameetech + outros apps todos aqui
-    external: false
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16
+    external: true
