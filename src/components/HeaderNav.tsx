@@ -178,6 +178,7 @@ export default function HeaderNav() {
                 transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
                 cursor: "pointer",
               }}
+              className="header-cta-desktop"
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-1px) scale(1.02)";
                 e.currentTarget.style.boxShadow = "0 10px 28px -6px rgba(255, 90, 54, 0.55)";
@@ -194,20 +195,28 @@ export default function HeaderNav() {
             {/* Mobile menu trigger button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="kameetech-mobile-menu"
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "transparent",
-                border: "none",
+                background: "rgba(255,90,54,0.08)",
+                border: "1px solid rgba(255,90,54,0.25)",
                 color: "#08103D",
                 cursor: "pointer",
-                padding: "0.25rem",
+                padding: "0.45rem 0.55rem",
+                borderRadius: "9999px",
+                width: "36px",
+                height: "36px",
+                minWidth: "36px",
+                minHeight: "36px",
+                margin: "0",
               }}
               className="mobile-burger"
-              aria-label="Toggle menu"
+              aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={18} strokeWidth={2.2} /> : <Menu size={18} strokeWidth={2.2} />}
             </button>
           </div>
         </div>
@@ -215,50 +224,107 @@ export default function HeaderNav() {
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div
-            className="glass-card"
+            id="kameetech-mobile-menu"
+            role="menu"
+            aria-label="Navegação mobile"
+            className="glass-card mobile-menu-dropdown"
             style={{
-              marginTop: "0.5rem",
+              position: "absolute",
+              top: "calc(100% + 0.5rem)",
+              left: "0",
+              right: "0",
+              zIndex: 55,
               padding: "1.25rem",
               display: "flex",
               flexDirection: "column",
-              gap: "1rem",
+              gap: "0.875rem",
               borderRadius: "18px",
-              backgroundColor: "rgba(255, 255, 255, 0.96)",
-              backdropFilter: "blur(20px) saturate(180%)",
-              border: "1px solid rgba(210, 209, 205, 0.5)",
-              boxShadow: "0 12px 40px -8px rgba(8, 16, 61, 0.12)",
+              backgroundColor: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(24px) saturate(180%)",
+              border: "1px solid rgba(210, 209, 205, 0.6)",
+              boxShadow: "0 20px 60px -16px rgba(8, 16, 61, 0.28)",
             }}
           >
             {navLinks.map((item) => (
               <a
                 key={item.label}
+                role="menuitem"
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 style={{
                   color: "#08103D",
                   fontSize: "1rem",
                   fontWeight: 500,
-                  padding: "0.5rem 0",
-                  borderBottom: "1px solid rgba(210, 209, 205, 0.5)",
+                  padding: "0.8rem 0.5rem",
+                  borderBottom: "1px solid rgba(210, 209, 205, 0.45)",
+                  textDecoration: "none",
                 }}
               >
                 {item.label}
               </a>
             ))}
+
+            <a
+              href="#contact"
+              role="menuitem"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.45rem",
+                padding: "0.85rem 1.2rem",
+                marginTop: "0.5rem",
+                borderRadius: "9999px",
+                backgroundColor: "#FF5A36",
+                color: "#ffffff",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+                border: "1px solid rgba(255, 90, 54, 0.2)",
+                boxShadow: "0 8px 24px -6px rgba(255, 90, 54, 0.55)",
+                textDecoration: "none",
+              }}
+            >
+              <span>Solicitar Orçamento</span>
+              <ArrowUpRight size={15} />
+            </a>
           </div>
         )}
       </header>
 
       <style jsx global>{`
-        @media (min-width: 768px) {
+        @media (max-width: 719px) {
+          .desktop-nav {
+            display: none !important;
+          }
+          .status-pill {
+            display: none !important;
+          }
+          .header-cta-desktop {
+            display: none !important;
+          }
+          .mobile-burger {
+            display: inline-flex !important;
+          }
+        }
+        @media (min-width: 720px) {
           .desktop-nav {
             display: flex !important;
           }
           .status-pill {
             display: inline-flex !important;
           }
+          .header-cta-desktop {
+            display: inline-flex !important;
+          }
           .mobile-burger {
             display: none !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .glass-pill {
+            padding-left: 0.9rem !important;
+            padding-right: 0.9rem !important;
           }
         }
       `}</style>

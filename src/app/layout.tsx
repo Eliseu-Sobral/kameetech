@@ -21,6 +21,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://kameetech.com.br"),
   title: "KameeTech | Engenharia Digital de Alta Performance",
   description:
     "Marca, Sites, Automações e Tráfego Pago — uma equipe de engenharia digital que trata o seu negócio como se fosse nosso. Do briefing ao primeiro lead pago, sem intermediários.",
