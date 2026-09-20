@@ -39,7 +39,7 @@ services:
       - "traefik.http.routers.kameetech.rule=Host(`kameetech.com.br`) || Host(`www.kameetech.com.br`)"
       - "traefik.http.routers.kameetech.entrypoints=websecure"
       # ★ SSL — aponta para o certresolver "letsencrypt" do SEU TRAEFIK JÁ RODANDO
-      - "traefik.http.routers.kameetech.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kameetech.tls.certresolver=leresolver"
       - "traefik.http.routers.kameetech.service=kameetech-svc"
       - "traefik.http.services.kameetech-svc.loadbalancer.server.port=3000"
       - "traefik.docker.network=network_public"
