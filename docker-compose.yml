@@ -1,9 +1,7 @@
 services:
   # =============================================================================
-  #  KAMEETECH LANDING — Next 16 Standalone (Portainer-ready)
-  #  Usa o TRAEFIK JÁ EXISTENTE na VPS (não duplicar!)
-  #  - Rede: network_public (external, mesma do traefik existente)
-  #  - Certificado SSL: usa certresolver "letsencrypt" do SEU TRAEFIK existente
+  #  KAMEETECH LANDING · Next 16 Standalone
+  #  PADRÃO IDÊNTICO AO PROJETO MAMAJULA QUE JÁ FUNCIONA
   # =============================================================================
   kameetech:
     build:
@@ -21,41 +19,59 @@ services:
       - NODE_ENV=production
       - TZ=America/Sao_Paulo
     networks:
-      - network_public
-    # ── OPÇÃO B: Expõe porta DIRETO (se não quiser Traefik) ──────────────
+      # ★ REDE CORRETA (mesma do projeto mamajula que funciona)
+      - portainer_default
+    # ── OPÇÃO B: Expõe porta DIRETO ──────────────────────────────────────
     # ports:
     #   - "3000:3000"
-    # ── HEALTHCHECK Portainer (verde / amarelo) ─────────────────────────
+    # ── HEALTHCHECK Portainer ───────────────────────────────────────────
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
-    # ── LABELS TRAEFIK · HTTPS + domínio automático ─────────────────────
+
+    # =========================================================================
+    #  LABELS TRAEFIK · PADRÃO EXATO MAMAJULA
+    # =========================================================================
     labels:
-      - "traefik.enable=true"
-      # HTTPS — Troque kameetech.com.br ← PELO SEU DOMÍNIO REAL abaixo ↓↓↓
-      - "traefik.http.routers.kameetech.rule=Host(`kameetech.com.br`) || Host(`www.kameetech.com.br`)"
-      - "traefik.http.routers.kameetech.entrypoints=websecure"
-      # ★ SSL — aponta para o certresolver "letsencrypt" do SEU TRAEFIK JÁ RODANDO
-      - "traefik.http.routers.kameetech.tls.certresolver=leresolver"
-      - "traefik.http.routers.kameetech.service=kameetech-svc"
-      - "traefik.http.services.kameetech-svc.loadbalancer.server.port=3000"
-      - "traefik.docker.network=network_public"
-      # Middleware www → non-www (opcional, comentar se não quiser)
-      - "traefik.http.middlewares.kameetech-nonwww.redirectregex.regex=^https?://www\\.(.*)"
-      - "traefik.http.middlewares.kameetech-nonwww.redirectregex.replacement=https://$${1}"
-      - "traefik.http.middlewares.kameetech-nonwww.redirectregex.permanent=true"
-      - "traefik.http.routers.kameetech.middlewares=kameetech-nonwww@docker,hsts-headers@docker"
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=portainer_default'
+      # Label legada (mantida igual mamajula, usa porta INTERNA do Next standalone)
+      - 'traefik.port=3000'
+
+      # ---------- Router: kameetech.com.br ----------
+      - 'traefik.http.routers.kameetech.entrypoints=websecure'
+      # ★ FORMATO OBRIGATÓRIO (igual mamajula): Host(`SEU-DOMINIO`) com CRASES
+      - 'traefik.http.routers.kameetech.rule=Host(`kameetech.com.br`)'
+      - 'traefik.http.routers.kameetech.service=kameetech'
+      # ★ TLS EXPLÍCITO (igual mamajula — faltava aqui antes)
+      - 'traefik.http.routers.kameetech.tls=true'
+      # ★ CERTRESOLVER CORRETO · nome real no seu Traefik (mesmo mamajula)
+      - 'traefik.http.routers.kameetech.tls.certresolver=leresolver'
+
+      # ---------- Service: kameetech ----------
+      - 'traefik.http.services.kameetech.loadbalancer.server.port=3000'
+      - 'traefik.http.services.kameetech.loadbalancer.server.scheme=http'
+      - 'traefik.http.services.kameetech.loadbalancer.passHostHeader=true'
+
+      # ---------------------------------------------------------------------
+      #  🔒 WWW → NON-WWW (opcional). COMENTADO POR ENQUANTO (igual mamajula
+      #     não usa middlewares). Descomente DEPOIS que o domínio abrir sem 404.
+      # ---------------------------------------------------------------------
+      # - 'traefik.http.middlewares.kameetech-nonwww.redirectregex.regex=^https?://www\.(.*)'
+      # - 'traefik.http.middlewares.kameetech-nonwww.redirectregex.replacement=https://${1}'
+      # - 'traefik.http.middlewares.kameetech-nonwww.redirectregex.permanent=true'
+      # - 'traefik.http.routers.kameetech.middlewares=kameetech-nonwww@docker'
+
       # Watchtower (se tiver rodando) — auto-atualiza com nova tag
-      - "com.centurylinklabs.watchtower.enable=true"
+      - 'com.centurylinklabs.watchtower.enable=true'
 
 # =============================================================================
-#  REDE ÚNICA · EXISTENTE (mesma do Traefik rodando na VPS)
-#  external=true OBRIGATÓRIO — evita conflito label compose/Portainer
+#  REDE · MESMA DO PORTAINER / MAMAJULA (external=true, já existe)
 # =============================================================================
 networks:
-  network_public:
-    name: network_public
+  portainer_default:
+    name: portainer_default
     external: true
